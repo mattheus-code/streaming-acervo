@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Streamverse — Archive</title>
+<meta name="description" content="A lightweight, text-only streaming archive. Browse platforms, movies, and series." />
+<style>
+  :root {
+    --bg: #0b0b0b;
+    --bg-elev: #141414;
+    --bg-elev-2: #1f1f1f;
+    --border: #2a2a2a;
+    --text: #f5f5f5;
+    --text-dim: #a3a3a3;
+    --text-mute: #6b6b6b;
+    --accent: #e50914;
+    --accent-hover: #f6121d;
+    --radius: 10px;
+    --shadow: 0 10px 30px rgba(0,0,0,.5);
+    --transition: 200ms cubic-bezier(.2,.7,.2,1);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  body.modal-open { overflow: hidden; }
+
+  /* Header */
+  header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: rgba(11,11,11,.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+  }
+  .header-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 18px 24px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+  .logo {
+    font-weight: 800;
+    font-size: 22px;
+    letter-spacing: .5px;
+    color: var(--accent);
+    text-transform: uppercase;
+    cursor: pointer;
+    user-select: none;
+  }
+  .logo span { color: var(--text); }
+
+  .breadcrumb {
+    flex: 1;
+    color: var(--text-dim);
+    font-size: 14px;
+    min-width: 120px;
+  }
+  .breadcrumb .crumb {
+    cursor: pointer;
+    transition: color var(--transition);
+  }
+  .breadcrumb .crumb:hover { color: var(--text); }
+  .breadcrumb .sep { margin: 0 8px; color: var(--text-mute); }
+  .breadcrumb .current { color: var(--text); font-weight: 600; }
+
+  .search-wrap {
+    position: relative;
+    flex: 0 1 280px;
+  }
+  .search-wrap.hidden { display: none; }
+  .search-input {
+    width: 100%;
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 14px 10px 38px;
+    border-radius: var(--radius);
+    font-size: 14px;
+    outline: none;
+    transition: border-color var(--transition), background var(--transition);
+  }
+  .search-input::placeholder { color: var(--text-mute); }
+  .search-input:focus {
+    border-color: var(--accent);
+    background: var(--bg-elev-2);
+  }
+  .search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-mute);
+    pointer-events: none;
+  }
+
+  main {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+  }
+
+  .page-title {
+    font-size: clamp(28px, 4vw, 40px);
+    margin: 0 0 8px;
+    font-weight: 800;
+    letter-spacing: -.5px;
+  }
+  .page-subtitle {
+    color: var(--text-dim);
+    margin: 0 0 32px;
+    font-size: 15px;
+  }
+
+  /* Platform list */
+  .platform-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    max-width: 560px;
+    margin: 0 auto;
+  }
+  .platform-card {
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 22px 26px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: all var(--transition);
+    text-align: left;
+    width: 100%;
+    color: var(--text);
+    font-family: inherit;
+  }
+  .platform-card:hover {
+    background: var(--bg-elev-2);
+    border-color: var(--accent);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
+  }
+  .platform-card .name {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: .3px;
+  }
+  .platform-card .meta {
+    color: var(--text-mute);
+    font-size: 13px;
+  }
+  .platform-card .arrow {
+    color: var(--text-mute);
+    transition: transform var(--transition), color var(--transition);
+  }
+  .platform-card:hover .arrow {
+    color: var(--accent);
+    transform: translateX(4px);
+  }
+
+  /* Type selector */
+  .type-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    max-width: 560px;
+    margin: 0 auto;
+  }
+  .type-card {
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 36px 24px;
+    cursor: pointer;
+    text-align: center;
+    transition: all var(--transition);
+    color: var(--text);
+    font-family: inherit;
+  }
+  .type-card:hover {
+    background: var(--bg-elev-2);
+    border-color: var(--accent);
+    transform: translateY(-3px);
+    box-shadow: var(--shadow);
+  }
+  .type-card .label {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .type-card .count {
+    color: var(--text-mute);
+    font-size: 13px;
+  }
+
+  /* Title list */
+  .letter-group { margin-bottom: 32px; }
+  .letter-heading {
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--accent);
+    margin: 0 0 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .titles {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 6px;
+  }
+  .title-item {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    padding: 10px 14px;
+    cursor: pointer;
+    color: var(--text);
+    font-size: 15px;
+    text-align: left;
+    transition: all 150ms ease;
+    font-family: inherit;
+  }
+  .title-item:hover {
+    background: var(--bg-elev);
+    border-color: var(--border);
+    color: var(--accent);
+    padding-left: 18px;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-mute);
+  }
+  .empty-state .icon { font-size: 40px; margin-bottom: 12px; }
+
+  /* Back button */
+  .back-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 8px 16px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-size: 13px;
+    margin-bottom: 24px;
+    transition: all var(--transition);
+    font-family: inherit;
+  }
+  .back-btn:hover {
+    border-color: var(--accent);
+    color: var(--text);
+  }
+
+  /* Modal */
+  .modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.92);
+    z-index: 100;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    animation: fadeIn 200ms ease;
+  }
+  .modal.open { display: flex; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+  .modal-content {
+    width: 100%;
+    max-width: 1100px;
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    animation: slideUp 250ms cubic-bezier(.2,.7,.2,1);
+  }
+  @keyframes slideUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    gap: 12px;
+  }
+  .modal-title {
+    font-size: 16px;
+    font-weight: 700;
+    margin: 0;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .modal-actions { display: flex; gap: 8px; }
+  .icon-btn {
+    background: var(--bg-elev-2);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition);
+    font-family: inherit;
+  }
+  .icon-btn:hover {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+  }
+  .icon-btn.copied {
+    background: #16a34a;
+    border-color: #16a34a;
+    color: white;
+  }
+
+  .video-wrap {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    background: #000;
+  }
+  .video-wrap iframe {
+    width: 100%;
+    height: 100%;
+    border: 0;
+  }
+
+  /* Animations */
+  .view {
+    animation: viewIn 250ms ease;
+  }
+  @keyframes viewIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Responsive */
+  @media (max-width: 640px) {
+    .header-inner { padding: 14px 16px; gap: 12px; }
+    .breadcrumb { order: 3; flex-basis: 100%; }
+    .search-wrap { flex: 1; }
+    main { padding: 24px 16px 60px; }
+    .type-list { grid-template-columns: 1fr; }
+    .platform-card { padding: 18px 20px; }
+    .titles { grid-template-columns: 1fr; }
+    .modal { padding: 0; }
+    .modal-content { border-radius: 0; height: 100%; display: flex; flex-direction: column; }
+    .video-wrap { flex: 1; aspect-ratio: auto; }
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 10px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--bg-elev-2); border-radius: 10px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--bg-elev-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 12px 20px;
+    border-radius: var(--radius);
+    font-size: 14px;
+    z-index: 200;
+    transition: transform 250ms cubic-bezier(.2,.7,.2,1);
+    box-shadow: var(--shadow);
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <div class="logo" id="logo">Stream<span>verse</span></div>
+      <nav class="breadcrumb" id="breadcrumb" aria-label="Breadcrumb"></nav>
+      <div class="search-wrap hidden" id="searchWrap">
+        <span class="search-icon" aria-hidden="true">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
+        </span>
+        <input id="search" class="search-input" type="text" placeholder="Search titles..." aria-label="Search titles" />
+      </div>
+    </div>
+  </header>
+
+  <main id="app"></main>
+
+  <!-- Modal -->
+  <div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modalTitle">Title</h3>
+        <div class="modal-actions">
+          <button class="icon-btn" id="copyBtn" title="Copy link" aria-label="Copy video link">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg>
+          </button>
+          <button class="icon-btn" id="closeBtn" title="Close" aria-label="Close player">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
+          </button>
+        </div>
+      </div>
+      <div class="video-wrap">
+        <iframe id="player" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen></iframe>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast">Link copied</div>
+
+<script>
+/* =========================================================
+   DATA — platform → type → titles (replace links freely)
+   ========================================================= */
+const DATA = {
+  netflix: {
+    name: "Netflix",
+    movies: [
+      { title: "Avatar", link: "https://example.com/embed/avatar" },
+      { title: "Avengers", link: "https://example.com/embed/avengers" },
+      { title: "Batman", link: "https://example.com/embed/batman" },
+      { title: "Blade Runner 2049", link: "https://example.com/embed/blade-runner" },
+      { title: "Dune", link: "https://example.com/embed/dune" },
+      { title: "Inception", link: "https://example.com/embed/inception" },
+      { title: "Interstellar", link: "https://example.com/embed/interstellar" },
+      { title: "The Irishman", link: "https://example.com/embed/irishman" },
+      { title: "Roma", link: "https://example.com/embed/roma" }
+    ],
+    series: [
+      { title: "Black Mirror", link: "https://example.com/embed/black-mirror" },
+      { title: "Breaking Bad", link: "https://example.com/embed/breaking-bad" },
+      { title: "The Crown", link: "https://example.com/embed/the-crown" },
+      { title: "Dark", link: "https://example.com/embed/dark" },
+      { title: "Mindhunter", link: "https://example.com/embed/mindhunter" },
+      { title: "Ozark", link: "https://example.com/embed/ozark" },
+      { title: "Stranger Things", link: "https://example.com/embed/stranger-things" },
+      { title: "The Witcher", link: "https://example.com/embed/witcher" }
+    ]
+  },
+  globoplay: {
+    name: "Globoplay",
+    movies: [
+      { title: "Bacurau", link: "https://example.com/embed/bacurau" },
+      { title: "Cidade de Deus", link: "https://example.com/embed/cidade-de-deus" },
+      { title: "Central do Brasil", link: "https://example.com/embed/central-do-brasil" },
+      { title: "Tropa de Elite", link: "https://example.com/embed/tropa-de-elite" }
+    ],
+    series: [
+      { title: "Aruanas", link: "https://example.com/embed/aruanas" },
+      { title: "Cine Holliúdy", link: "https://example.com/embed/cine-holliudy" },
+      { title: "Onde Está Meu Coração", link: "https://example.com/embed/onde-esta" },
+      { title: "Sob Pressão", link: "https://example.com/embed/sob-pressao" }
+    ]
+  },
+  hbomax: {
+    name: "HBO Max",
+    movies: [
+      { title: "Dune: Part Two", link: "https://example.com/embed/dune-2" },
+      { title: "The Matrix", link: "https://example.com/embed/matrix" },
+      { title: "Joker", link: "https://example.com/embed/joker" },
+      { title: "Oppenheimer", link: "https://example.com/embed/oppenheimer" }
+    ],
+    series: [
+      { title: "Chernobyl", link: "https://example.com/embed/chernobyl" },
+      { title: "Game of Thrones", link: "https://example.com/embed/got" },
+      { title: "House of the Dragon", link: "https://example.com/embed/hotd" },
+      { title: "Succession", link: "https://example.com/embed/succession" },
+      { title: "The Last of Us", link: "https://example.com/embed/last-of-us" },
+      { title: "True Detective", link: "https://example.com/embed/true-detective" }
+    ]
+  },
+  prime: {
+    name: "Prime Video",
+    movies: [
+      { title: "The Big Sick", link: "https://example.com/embed/big-sick" },
+      { title: "Manchester by the Sea", link: "https://example.com/embed/manchester" },
+      { title: "Sound of Metal", link: "https://example.com/embed/sound-of-metal" },
+      { title: "The Tomorrow War", link: "https://example.com/embed/tomorrow-war" }
+    ],
+    series: [
+      { title: "The Boys", link: "https://example.com/embed/the-boys" },
+      { title: "Fallout", link: "https://example.com/embed/fallout" },
+      { title: "Invincible", link: "https://example.com/embed/invincible" },
+      { title: "The Marvelous Mrs. Maisel", link: "https://example.com/embed/maisel" },
+      { title: "Reacher", link: "https://example.com/embed/reacher" }
+    ]
+  },
+  disney: {
+    name: "Disney+",
+    movies: [
+      { title: "Encanto", link: "https://example.com/embed/encanto" },
+      { title: "Inside Out 2", link: "https://example.com/embed/inside-out-2" },
+      { title: "Soul", link: "https://example.com/embed/soul" },
+      { title: "Turning Red", link: "https://example.com/embed/turning-red" }
+    ],
+    series: [
+      { title: "Andor", link: "https://example.com/embed/andor" },
+      { title: "Loki", link: "https://example.com/embed/loki" },
+      { title: "The Mandalorian", link: "https://example.com/embed/mandalorian" },
+      { title: "WandaVision", link: "https://example.com/embed/wandavision" }
+    ]
+  },
+  apple: {
+    name: "Apple TV+",
+    movies: [
+      { title: "CODA", link: "https://example.com/embed/coda" },
+      { title: "Killers of the Flower Moon", link: "https://example.com/embed/killers" },
+      { title: "Napoleon", link: "https://example.com/embed/napoleon" }
+    ],
+    series: [
+      { title: "Foundation", link: "https://example.com/embed/foundation" },
+      { title: "The Morning Show", link: "https://example.com/embed/morning-show" },
+      { title: "Severance", link: "https://example.com/embed/severance" },
+      { title: "Slow Horses", link: "https://example.com/embed/slow-horses" },
+      { title: "Ted Lasso", link: "https://example.com/embed/ted-lasso" }
+    ]
+  }
+};
+
+/* =========================================================
+   STATE
+   ========================================================= */
+const state = {
+  view: "platforms",   // platforms | types | titles
+  platform: null,      // key in DATA
+  type: null,          // 'movies' | 'series'
+  search: ""
+};
+
+const app = document.getElementById("app");
+const breadcrumb = document.getElementById("breadcrumb");
+const searchWrap = document.getElementById("searchWrap");
+const searchInput = document.getElementById("search");
+const modal = document.getElementById("modal");
+const player = document.getElementById("player");
+const modalTitle = document.getElementById("modalTitle");
+const closeBtn = document.getElementById("closeBtn");
+const copyBtn = document.getElementById("copyBtn");
+const logo = document.getElementById("logo");
+const toast = document.getElementById("toast");
+
+let currentLink = "";
+
+/* =========================================================
+   RENDERING
+   ========================================================= */
+function render() {
+  app.innerHTML = "";
+  renderBreadcrumb();
+  toggleSearch();
+
+  if (state.view === "platforms") return renderPlatforms();
+  if (state.view === "types") return renderTypes();
+  if (state.view === "titles") return renderTitles();
+}
+
+function renderBreadcrumb() {
+  const parts = [];
+  parts.push(`<span class="crumb" data-nav="platforms">Home</span>`);
+  if (state.platform) {
+    parts.push(`<span class="sep">/</span>`);
+    const isLeaf = state.view === "types";
+    parts.push(isLeaf
+      ? `<span class="current">${DATA[state.platform].name}</span>`
+      : `<span class="crumb" data-nav="types">${DATA[state.platform].name}</span>`);
+  }
+  if (state.type) {
+    parts.push(`<span class="sep">/</span>`);
+    parts.push(`<span class="current">${state.type === "movies" ? "Movies" : "Series"}</span>`);
+  }
+  breadcrumb.innerHTML = parts.join("");
+  breadcrumb.querySelectorAll(".crumb").forEach(el => {
+    el.addEventListener("click", () => {
+      const nav = el.dataset.nav;
+      if (nav === "platforms") goHome();
+      else if (nav === "types") goTypes(state.platform);
+    });
+  });
+}
+
+function toggleSearch() {
+  if (state.view === "titles") {
+    searchWrap.classList.remove("hidden");
+  } else {
+    searchWrap.classList.add("hidden");
+    searchInput.value = "";
+    state.search = "";
+  }
+}
+
+function renderPlatforms() {
+  const view = document.createElement("div");
+  view.className = "view";
+  view.innerHTML = `
+    <h1 class="page-title">Choose a platform</h1>
+    <p class="page-subtitle">Browse the archive by streaming service.</p>
+    <div class="platform-list" id="platformList"></div>
+  `;
+  app.appendChild(view);
+
+  const list = view.querySelector("#platformList");
+  Object.entries(DATA).forEach(([key, plat]) => {
+    const total = plat.movies.length + plat.series.length;
+    const btn = document.createElement("button");
+    btn.className = "platform-card";
+    btn.innerHTML = `
+      <div>
+        <div class="name">${plat.name}</div>
+        <div class="meta">${plat.movies.length} movies · ${plat.series.length} series</div>
+      </div>
+      <span class="arrow" aria-hidden="true">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+      </span>
+    `;
+    btn.addEventListener("click", () => goTypes(key));
+    list.appendChild(btn);
+  });
+}
+
+function renderTypes() {
+  const plat = DATA[state.platform];
+  const view = document.createElement("div");
+  view.className = "view";
+  view.innerHTML = `
+    <button class="back-btn" id="backBtn">← Back</button>
+    <h1 class="page-title">${plat.name}</h1>
+    <p class="page-subtitle">What would you like to watch?</p>
+    <div class="type-list">
+      <button class="type-card" data-type="movies">
+        <div class="label">Movies</div>
+        <div class="count">${plat.movies.length} titles</div>
+      </button>
+      <button class="type-card" data-type="series">
+        <div class="label">Series</div>
+        <div class="count">${plat.series.length} titles</div>
+      </button>
+    </div>
+  `;
+  app.appendChild(view);
+
+  view.querySelector("#backBtn").addEventListener("click", goHome);
+  view.querySelectorAll(".type-card").forEach(card => {
+    card.addEventListener("click", () => goTitles(state.platform, card.dataset.type));
+  });
+}
+
+function renderTitles() {
+  const plat = DATA[state.platform];
+  const items = plat[state.type] || [];
+  const view = document.createElement("div");
+  view.className = "view";
+  view.innerHTML = `
+    <button class="back-btn" id="backBtn">← Back</button>
+    <h1 class="page-title">${plat.name} — ${state.type === "movies" ? "Movies" : "Series"}</h1>
+    <p class="page-subtitle">${items.length} title${items.length === 1 ? "" : "s"} available.</p>
+    <div id="titleArea"></div>
+  `;
+  app.appendChild(view);
+
+  view.querySelector("#backBtn").addEventListener("click", () => goTypes(state.platform));
+  renderTitleList(items);
+}
+
+function renderTitleList(items) {
+  const area = document.getElementById("titleArea");
+  if (!area) return;
+  const query = state.search.trim().toLowerCase();
+  const filtered = query
+    ? items.filter(i => i.title.toLowerCase().includes(query))
+    : items.slice();
+
+  filtered.sort((a, b) => a.title.localeCompare(b.title));
+
+  if (filtered.length === 0) {
+    area.innerHTML = `
+      <div class="empty-state">
+        <div class="icon">∅</div>
+        <p>No titles match "<strong>${escapeHtml(state.search)}</strong>".</p>
+      </div>
+    `;
+    return;
+  }
+
+  // Group by first letter
+  const groups = {};
+  filtered.forEach(item => {
+    const ch = item.title.charAt(0).toUpperCase();
+    const letter = /[A-Z]/.test(ch) ? ch : "#";
+    if (!groups[letter]) groups[letter] = [];
+    groups[letter].push(item);
+  });
+
+  const letters = Object.keys(groups).sort();
+  area.innerHTML = letters.map(letter => `
+    <section class="letter-group">
+      <h2 class="letter-heading">${letter}</h2>
+      <div class="titles">
+        ${groups[letter].map(item => `
+          <button class="title-item" data-link="${encodeURIComponent(item.link)}" data-title="${escapeAttr(item.title)}">
+            ${escapeHtml(item.title)}
+          </button>
+        `).join("")}
+      </div>
+    </section>
+  `).join("");
+
+  area.querySelectorAll(".title-item").forEach(btn => {
+    btn.addEventListener("click", () => {
+      openModal(btn.dataset.title, decodeURIComponent(btn.dataset.link));
+    });
+  });
+}
+
+/* =========================================================
+   NAVIGATION
+   ========================================================= */
+function goHome() {
+  state.view = "platforms";
+  state.platform = null;
+  state.type = null;
+  state.search = "";
+  render();
+}
+function goTypes(platformKey) {
+  state.view = "types";
+  state.platform = platformKey;
+  state.type = null;
+  render();
+}
+function goTitles(platformKey, type) {
+  state.view = "titles";
+  state.platform = platformKey;
+  state.type = type;
+  render();
+}
+
+/* =========================================================
+   MODAL
+   ========================================================= */
+function openModal(title, link) {
+  currentLink = link;
+  modalTitle.textContent = title;
+  player.src = link;
+  modal.classList.add("open");
+  document.body.classList.add("modal-open");
+}
+function closeModal() {
+  modal.classList.remove("open");
+  player.src = "";          // stops video
+  document.body.classList.remove("modal-open");
+  currentLink = "";
+  copyBtn.classList.remove("copied");
+}
+
+closeBtn.addEventListener("click", closeModal);
+modal.addEventListener("click", (e) => {
+  if (e.target === modal) closeModal();
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && modal.classList.contains("open")) closeModal();
+});
+
+copyBtn.addEventListener("click", async () => {
+  if (!currentLink) return;
+  try {
+    await navigator.clipboard.writeText(currentLink);
+  } catch {
+    const ta = document.createElement("textarea");
+    ta.value = currentLink;
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); } catch {}
+    document.body.removeChild(ta);
+  }
+  copyBtn.classList.add("copied");
+  showToast("Link copied to clipboard");
+  setTimeout(() => copyBtn.classList.remove("copied"), 1500);
+});
+
+/* =========================================================
+   SEARCH
+   ========================================================= */
+searchInput.addEventListener("input", (e) => {
+  state.search = e.target.value;
+  if (state.view === "titles") {
+    const items = DATA[state.platform][state.type] || [];
+    renderTitleList(items);
+  }
+});
+
+logo.addEventListener("click", goHome);
+
+/* =========================================================
+   UTILITIES
+   ========================================================= */
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, m => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  }[m]));
+}
+function escapeAttr(s) { return escapeHtml(s); }
+
+let toastTimer;
+function showToast(msg) {
+  toast.textContent = msg;
+  toast.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove("show"), 1800);
+}
+
+/* =========================================================
+   INIT
+   ========================================================= */
+render();
+</script>
+</body>
+</html>
